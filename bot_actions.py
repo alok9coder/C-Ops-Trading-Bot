@@ -14,6 +14,7 @@ import pytesseract
 PLACEHOLDER_WINDOW_TITLE = "Critical Ops"
 TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
+# Use the known standard Tesseract install path if available.
 if os.path.isfile(TESSERACT_CMD):
     pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
@@ -32,6 +33,7 @@ REGION_DEFINITIONS = {
     "by_type_button": (430, 120),
 }
 
+# OCR engine instance for reading English numerals/text from the UI.
 OCR_READER = easyocr.Reader(["en"], gpu=False)
 
 pyautogui.FAILSAFE = True
@@ -40,6 +42,7 @@ pyautogui.PAUSE = 0.1
 
 @dataclass
 class CatalogRow:
+    # Holds a discovered skin entry from the listing screen.
     skin_name: str
     row_center: Tuple[int, int]
     price_value: int
@@ -47,20 +50,24 @@ class CatalogRow:
 
 
 def _humanized_pause(min_seconds: float = 0.25, max_seconds: float = 0.65) -> None:
+    # Sleep for a randomized short duration so actions appear more human-like.
     time.sleep(random.uniform(min_seconds, max_seconds))
 
 
 def _jitter_point(x: int, y: int, radius: int = 5) -> Tuple[int, int]:
+    # Add a small random offset to the target coordinates.
     return x + random.randint(-radius, radius), y + random.randint(-radius, radius)
 
 
 def _safe_move_to(x: int, y: int) -> None:
+    # Move the mouse smoothly and with jitter to mimic a real user.
     jittered = _jitter_point(x, y)
     duration = random.uniform(0.18, 0.42)
     pyautogui.moveTo(jittered[0], jittered[1], duration=duration)
 
 
 def locate_game_window() -> pyautogui.Window:
+    # Find the Critical Ops window by its title and activate it.
     windows = pyautogui.getWindowsWithTitle(PLACEHOLDER_WINDOW_TITLE)
     if not windows:
         raise RuntimeError(f"Game window not found. Make sure the title contains '{PLACEHOLDER_WINDOW_TITLE}'.")
@@ -72,11 +79,13 @@ def locate_game_window() -> pyautogui.Window:
 
 
 def get_window_position() -> Tuple[int, int, int, int]:
+    # Return the screen coordinates of the active game window.
     window = locate_game_window()
     return window.left, window.top, window.width, window.height
 
 
 def _crop_region(relative_region: Tuple[int, int, int, int]) -> np.ndarray:
+    # Capture a screenshot of a relative region inside the game window.
     left, top, _, _ = get_window_position()
     x, y, w, h = relative_region
     screenshot = pyautogui.screenshot(region=(left + x, top + y, w, h))
@@ -84,6 +93,7 @@ def _crop_region(relative_region: Tuple[int, int, int, int]) -> np.ndarray:
 
 
 def preprocess_for_ocr(image: np.ndarray) -> np.ndarray:
+    # Convert the image to grayscale and threshold it for cleaner OCR input.
     grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(grayscale, (5, 5), 0)
     _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -91,6 +101,7 @@ def preprocess_for_ocr(image: np.ndarray) -> np.ndarray:
 
 
 def extract_text_from_region(region_name: str) -> str:
+    # Read OCR text from a named region in the game UI.
     if region_name not in REGION_DEFINITIONS:
         raise ValueError(f"Unknown OCR region: {region_name}")
     image = _crop_region(REGION_DEFINITIONS[region_name])
@@ -100,17 +111,20 @@ def extract_text_from_region(region_name: str) -> str:
 
 
 def parse_numeric_value(text: str) -> int:
+    # Extract digits from OCR text and convert them into an integer.
     digits = "".join(ch for ch in text if ch.isdigit())
     return int(digits) if digits else 0
 
 
 def click_point(x: int, y: int) -> None:
+    # Click a screen point with humanized movement and pause.
     _safe_move_to(x, y)
     pyautogui.click()
     _humanized_pause(0.25, 0.55)
 
 
 def click_region_center(region_name: str) -> Tuple[int, int]:
+    # Click the center of a named region and return the clicked coordinates.
     left, top, _, _ = get_window_position()
     x, y, w, h = REGION_DEFINITIONS[region_name]
     center_x = left + x + w // 2
@@ -120,6 +134,7 @@ def click_region_center(region_name: str) -> Tuple[int, int]:
 
 
 def safe_type_string(value: str) -> None:
+    # Clear an input field and type a numeric string with slight delays.
     pyautogui.hotkey("ctrl", "a")
     _humanized_pause(0.12, 0.22)
     pyautogui.press("backspace")
@@ -129,10 +144,12 @@ def safe_type_string(value: str) -> None:
 
 
 def activate_by_type_filter() -> None:
+    # Click the marketplace filter button to ensure the listing is filtered by type.
     click_region_center("by_type_button")
 
 
 def scan_catalog_rows(target_skins: list[str]) -> list[CatalogRow]:
+    # Scan the visible rows in the catalog and return matching target skins.
     left, top, _, _ = get_window_position()
     rows = []
     base_x, base_y, width, height = REGION_DEFINITIONS["catalog_row_1"]
@@ -168,17 +185,20 @@ def scan_catalog_rows(target_skins: list[str]) -> list[CatalogRow]:
 
 
 def open_skin_detail(row_center: Tuple[int, int]) -> None:
+    # Open the detailed view for a selected skin entry.
     click_point(row_center[0], row_center[1])
     _humanized_pause(1.0, 1.8)
 
 
 def extract_skin_detail_prices() -> tuple[int, int]:
+    # Read the detailed lowest sell and highest buy prices from the detail view.
     lowest_sell_text = extract_text_from_region("detail_lowest_sell")
     highest_buy_text = extract_text_from_region("detail_highest_buy")
     return parse_numeric_value(lowest_sell_text), parse_numeric_value(highest_buy_text)
 
 
 def place_bid(target_amount: int) -> None:
+    # Enter a bid amount and confirm the offer in the UI.
     click_region_center("bid_input_field")
     safe_type_string(str(target_amount))
     click_region_center("confirm_bid_button")
@@ -186,5 +206,6 @@ def place_bid(target_amount: int) -> None:
 
 
 def return_to_catalog() -> None:
+    # Return to the catalog listing after viewing a detail page.
     click_region_center("catalog_back_button")
     _humanized_pause(0.8, 1.4)

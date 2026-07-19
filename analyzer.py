@@ -6,6 +6,7 @@ import config
 
 @dataclass
 class BidDecision:
+    """Holds a recommended action and target bid for a skin."""
     skin_name: str
     action: str
     target_bid: int
@@ -19,6 +20,7 @@ def calculate_net_profit(lowest_sell_price: int, highest_buy_request: int) -> fl
 
 
 def is_currently_highest_bidder(skin_name: str, current_market_highest_buy_request: int) -> bool:
+    # Determine whether the bot already maintains the highest bid for the skin.
     active_bid = config.Config.get_active_order(skin_name)
     if active_bid is None:
         return False
@@ -41,6 +43,7 @@ def evaluate_skin_bid(
         if active_bid >= current_market_highest_buy_request:
             return None
 
+        # Evaluate the budget if the existing bid is released.
         budget_if_modified = config.Config.get_available_budget() + active_bid
         if budget_if_modified < target_bid:
             return None
@@ -75,7 +78,7 @@ def evaluate_skin_bid(
 
 
 def reserve_budget_for_bid(decision: BidDecision) -> bool:
-    """Update the live budget state if the bid decision is viable."""
+    """Reserve the budget and record the proposed active bid."""
     current_budget = config.Config.get_available_budget()
     if decision.action == "increase" and decision.old_bid is not None:
         effective_budget = current_budget + decision.old_bid
@@ -93,7 +96,7 @@ def reserve_budget_for_bid(decision: BidDecision) -> bool:
 
 
 def process_bid_outcome(skin_name: str, outcome: str, bid_value: int) -> None:
-    """Update internal state after a confirmed bid or a cancellation."""
+    """Update active order state after a bid confirmation or cancellation."""
     if outcome == "confirmed":
         config.Config.set_active_order(skin_name, bid_value)
     elif outcome == "cancelled":

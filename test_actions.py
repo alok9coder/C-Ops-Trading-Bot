@@ -14,18 +14,21 @@ from bot_actions import (
 
 
 def print_window_info() -> None:
+    # Print the coordinates and size of the detected game window.
     left, top, width, height = get_window_position()
     print("Detected game window position and size:")
     print(f"  left={left}, top={top}, width={width}, height={height}")
 
 
 def test_ocr_region(region_name: str) -> None:
+    # Perform OCR on a selected region and print the raw text result.
     print(f"Testing OCR on region '{region_name}'...")
     text = extract_text_from_region(region_name)
     print(f"OCR result for {region_name}: '{text}'")
 
 
 def test_click_region(region_name: str) -> None:
+    # Click the center of the selected UI region after a short countdown.
     left, top, _, _ = get_window_position()
     x, y, w, h = REGION_DEFINITIONS[region_name]
     center_x = left + x + w // 2
@@ -39,6 +42,7 @@ def test_click_region(region_name: str) -> None:
 
 
 def test_text_entry(region_name: str, text: str) -> None:
+    # Focus an input region and inject sample text safely.
     print(f"Testing text entry into region '{region_name}'...")
     center = click_region_center(region_name)
     print(f"Clicked input field at {center}. Typing now...")
@@ -47,6 +51,7 @@ def test_text_entry(region_name: str, text: str) -> None:
 
 
 def main() -> None:
+    # Run the helper test script for window detection, OCR, mouse clicks, and text injection.
     print("=== Critical Ops Bot Action Test ===")
     print(f"Tesseract command path: {TESSERACT_CMD}")
     print("Make sure the game window is visible and active on one monitor.")

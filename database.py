@@ -6,10 +6,12 @@ from typing import Optional
 
 DB_FILENAME = os.path.join(os.path.dirname(__file__), "market_data.sqlite3")
 
+# Lock used to serialize access to the SQLite database across threads.
 _db_lock = threading.RLock()
 
 
 def _get_connection() -> sqlite3.Connection:
+    # Open a sqlite connection with row access by column name.
     conn = sqlite3.connect(DB_FILENAME, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
@@ -60,7 +62,7 @@ def reset_market_catalog() -> None:
 
 
 def save_or_update_skin_record(skin_name: str, highest_bp: int, lowest_sp: int, calculated_margin: float) -> None:
-    """Store or refresh a processed skin record."""
+    """Insert or update a market record for a skin."""
     timestamp = datetime.utcnow().isoformat()
     with _db_lock:
         conn = _get_connection()
@@ -82,6 +84,7 @@ def save_or_update_skin_record(skin_name: str, highest_bp: int, lowest_sp: int, 
 
 
 def query_skin_record(skin_name: str) -> Optional[sqlite3.Row]:
+    # Return the most recent record for a specific skin from the market catalog.
     with _db_lock:
         conn = _get_connection()
         cursor = conn.cursor()
@@ -95,6 +98,7 @@ def query_skin_record(skin_name: str) -> Optional[sqlite3.Row]:
 
 
 def query_recent_history(limit: int = 50) -> list[sqlite3.Row]:
+    # Retrieve the newest bid history entries up to the specified limit.
     with _db_lock:
         conn = _get_connection()
         cursor = conn.cursor()
@@ -108,6 +112,7 @@ def query_recent_history(limit: int = 50) -> list[sqlite3.Row]:
 
 
 def record_bid_history(skin_name: str, action: str, bid_value: int, profit_margin: float | None = None) -> None:
+    # Append an action record to the bid history table for auditing.
     timestamp = datetime.utcnow().isoformat()
     with _db_lock:
         conn = _get_connection()

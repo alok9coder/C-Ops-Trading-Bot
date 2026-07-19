@@ -8,6 +8,7 @@ import bot_actions
 import config
 import database
 
+# The list of items to scan in each market sweep.
 TARGET_SKIN_PORTFOLIO = [
     "URATIO - FINISHER",
     "GLOVES - AZURE DYNASTY",
@@ -17,6 +18,7 @@ TARGET_SKIN_PORTFOLIO = [
 
 
 def emergency_panic_listener() -> None:
+    # Background listener that sets the run-state to False when the user presses Q or ESC.
     while config.Config.is_running():
         if msvcrt.kbhit():
             key = msvcrt.getwch()
@@ -28,6 +30,7 @@ def emergency_panic_listener() -> None:
 
 
 def initialize_system() -> None:
+    # Reset the database and apply the marketplace filter before beginning automation.
     print("Initializing Critical Ops trading bot...")
     database.reset_market_catalog()
     bot_actions.activate_by_type_filter()
@@ -35,6 +38,7 @@ def initialize_system() -> None:
 
 
 def scan_portfolio_and_build_feed() -> dict[str, tuple[int, int]]:
+    # Scan the visible catalog rows and return the current price and volume values.
     market_feed: dict[str, tuple[int, int]] = {}
     rows = bot_actions.scan_catalog_rows(TARGET_SKIN_PORTFOLIO)
     for row in rows:
@@ -43,6 +47,7 @@ def scan_portfolio_and_build_feed() -> dict[str, tuple[int, int]]:
 
 
 def main_loop() -> None:
+    # Main execution loop that continuously evaluates and places bids.
     panic_thread = threading.Thread(target=emergency_panic_listener, daemon=True)
     panic_thread.start()
 
@@ -114,6 +119,7 @@ def main_loop() -> None:
 
 
 def main() -> None:
+    # Entry point for the bot that initializes state and starts the main loop.
     try:
         initialize_system()
         main_loop()
